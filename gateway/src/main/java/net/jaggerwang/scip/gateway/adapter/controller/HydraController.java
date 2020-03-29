@@ -44,7 +44,7 @@ public class HydraController extends AbstractController {
 
                     model.addAttribute("challenge", challenge);
                     return Mono.just("hydra/login");
-        });
+                });
     }
 
     @Data
@@ -71,7 +71,7 @@ public class HydraController extends AbstractController {
         }
 
         return userAsyncService.verifyPassword(UserDto.builder().username(form.username)
-                    .mobile(form.mobile).email(form.email).password(form.password).build())
+                .mobile(form.mobile).email(form.email).password(form.password).build())
                 .flatMap(userDto -> {
                     var loginAccept = LoginAcceptDto.builder()
                             .subject(userDto.getId().toString())
@@ -145,7 +145,7 @@ public class HydraController extends AbstractController {
 
     @GetMapping("/logout")
     public Mono<String> logout(@RequestParam(name = "logout_challenge") String challenge,
-                              Model model) {
+                               Model model) {
         return hydraAsyncService
                 .getLogoutRequest(challenge)
                 .map(e -> {

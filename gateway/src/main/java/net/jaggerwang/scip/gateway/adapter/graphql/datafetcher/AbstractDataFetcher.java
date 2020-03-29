@@ -12,7 +12,6 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.jwt.Jwt;
 import reactor.core.publisher.Mono;
 
-
 abstract public class AbstractDataFetcher {
     @Autowired
     protected ObjectMapper objectMapper;
