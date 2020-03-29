@@ -32,9 +32,13 @@ services:
       SCIP_SPRING_REDIS_HOST: redis
       SCIP_SPRING_REDIS_PORT: 6379
       SCIP_SPRING_REDIS_PASSWORD:
+      SCIP_SPRING_SECURITY_OAUTH2_PROVIDER_HYDRA_AUTHORIZATION_URI: http://localhost:4444/oauth2/auth
+      SCIP_SPRING_SECURITY_OAUTH2_PROVIDER_HYDRA_TOKEN_URI: http://hydra:4444/oauth2/token
+      SCIP_SPRING_SECURITY_OAUTH2_PROVIDER_HYDRA_USER_INFO_URI: http://hydra:4444/userinfo
+      SCIP_SPRING_SECURITY_OAUTH2_PROVIDER_HYDRA_JWK_SET_URI: http://hydra:4444/.well-known/jwks.json
       SCIP_SPRING_CLOUD_CONSUL_HOST: consul
       SCIP_SPRING_CLOUD_CONSUL_PORT: 8500
-      SCIP_SERVICE_FILE_BASE_URL: http://localhost:9080/files
+      SCIP_SERVICE_FILE_BASE_URL: http://localhost:8080/files
       SCIP_SERVICE_HYDRA_URL: http://hydra:4444/
       SCIP_SERVICE_HYDRA_ADMIN_URL: http://hydra:4445/
     ports:
@@ -119,3 +123,33 @@ services:
     depends_on:
       - mysql
       - consul
+  hydra-migrate:
+    image: oryd/hydra:v1.2
+    command: migrate sql -e --yes
+    environment:
+      TZ: Asia/Shanghai
+      DSN: mysql://scip_auth:123456@tcp(mysql:3306)/scip_auth
+    depends_on:
+      - mysql
+  hydra:
+    image: oryd/hydra:v1.2
+    command: serve all --dangerous-force-http --dangerous-allow-insecure-redirect-urls http://localhost:8080/hydra/login,http://localhost:8080/hydra/consent,http://localhost:8080/hydra/logout
+    environment:
+      TZ: Asia/Shanghai
+      STRATEGIES_ACCESS_TOKEN: jwt
+      LOG_LEVEL: info
+      SECRETS_SYSTEM: a2N4m0XL659TIrB2V3fJBxUED5Zv5zUQ
+      DSN: mysql://scip_auth:123456@tcp(mysql:3306)/scip_auth
+      URLS_SELF_ISSUER: http://localhost:4444/
+      URLS_LOGIN: http://localhost:8080/hydra/login
+      URLS_CONSENT: http://localhost:8080/hydra/consent
+      URLS_LOGOUT: http://localhost:8080/hydra/logout
+      TTL_ACCESS_TOKEN: 12h
+      TTL_REFRESH_TOKEN: 720h
+    ports:
+      - 4444:4444
+      - 4445:4445
+    volumes:
+      - ~/data/spring-cloud-in-practice/hydra:/data
+    depends_on:
+      - hydra-migrate

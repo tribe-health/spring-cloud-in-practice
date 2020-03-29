@@ -1,8 +1,9 @@
 package net.jaggerwang.scip.gateway.api.filter;
 
-import net.jaggerwang.scip.gateway.api.security.LoggedUser;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -23,10 +24,20 @@ public class UserIdExchangeFilter implements ExchangeFilterFunction {
                         return exchangeFunction.exchange(clientRequest);
                     }
 
-                    var loggedUser = (LoggedUser) auth.getPrincipal();
+                    String userId;
+                    var principal = auth.getPrincipal();
+                    if (principal instanceof OAuth2User) {
+                        var oAuth2User = (OAuth2User) auth.getPrincipal();
+                        userId = oAuth2User.getName();
+                    } else if (principal instanceof Jwt) {
+                        var jwt = (Jwt) auth.getPrincipal();
+                        userId = jwt.getClaimAsString("sub");
+                    } else {
+                        return exchangeFunction.exchange(clientRequest);
+                    }
                     return exchangeFunction.exchange(ClientRequest.from(clientRequest)
                             .headers(headers -> headers
-                                    .set("X-User-Id", loggedUser.getId().toString()))
+                                    .set("X-User-Id", userId))
                             .build());
                 });
     }

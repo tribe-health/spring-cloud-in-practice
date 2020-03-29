@@ -11,8 +11,6 @@ import java.util.Map;
 @Component
 public class MutationType implements Type {
     @Autowired
-    MutationAuthLoginDataFetcher authLoginDataFetcher;
-    @Autowired
     MutationUserRegisterDataFetcher userRegisterDataFetcher;
     @Autowired
     MutationUserModifyDataFetcher userModifyDataFetcher;
@@ -34,7 +32,6 @@ public class MutationType implements Type {
     @Override
     public Map<String, DataFetcher> dataFetchers() {
         var m = new HashMap<String, DataFetcher>();
-        m.put("authLogin", authLoginDataFetcher);
         m.put("userRegister", userRegisterDataFetcher);
         m.put("userModify", userModifyDataFetcher);
         m.put("userSendMobileVerifyCode", userSendMobileVerifyCodeDataFetcher);

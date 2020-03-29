@@ -1,32 +1,21 @@
 package net.jaggerwang.scip.gateway.adapter.graphql.datafetcher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import graphql.schema.DataFetchingEnvironment;
 import net.jaggerwang.scip.common.usecase.port.service.async.FileAsyncService;
 import net.jaggerwang.scip.common.usecase.port.service.async.PostAsyncService;
 import net.jaggerwang.scip.common.usecase.port.service.async.StatAsyncService;
 import net.jaggerwang.scip.common.usecase.port.service.async.UserAsyncService;
-import net.jaggerwang.scip.gateway.api.security.LoggedUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.ReactiveAuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebSession;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.jwt.Jwt;
 import reactor.core.publisher.Mono;
-
-import java.util.concurrent.CompletableFuture;
-
-import static org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository.DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME;
 
 
 abstract public class AbstractDataFetcher {
     @Autowired
     protected ObjectMapper objectMapper;
-
-    @Autowired
-    private ReactiveAuthenticationManager authenticationManager;
 
     @Autowired
     protected UserAsyncService userAsyncService;
@@ -40,43 +29,7 @@ abstract public class AbstractDataFetcher {
     @Autowired
     protected StatAsyncService statAsyncService;
 
-    protected Mono<ServerWebExchange> getServerWebExchange() {
-        return Mono.subscriberContext()
-                .map(context -> context.get(ServerWebExchange.class));
-    }
-
-    protected Mono<WebSession> getWebSession() {
-        return getServerWebExchange()
-                .flatMap(exchange -> exchange.getSession());
-    }
-
-    protected Mono<LoggedUser> loginUser(String username, String password) {
-        return authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(username, password))
-                .flatMap(auth -> ReactiveSecurityContextHolder.getContext()
-                        .flatMap(securityContext -> getWebSession()
-                                .map(session -> {
-                                    securityContext.setAuthentication(auth);
-                                    session.getAttributes().put(
-                                            DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME,
-                                            securityContext);
-                                    return (LoggedUser) auth.getPrincipal();
-                                })));
-    }
-
-    protected Mono<LoggedUser> logoutUser() {
-        return loggedUser()
-                .flatMap(loggedUser -> ReactiveSecurityContextHolder.getContext()
-                        .flatMap(securityContext -> getWebSession()
-                                .map(session -> {
-                                    securityContext.setAuthentication(null);
-                                    session.getAttributes().remove(
-                                            DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME);
-                                    return loggedUser;
-                                })));
-    }
-
-    protected Mono<LoggedUser> loggedUser() {
+    protected Mono<Long> loggedUserId() {
         return ReactiveSecurityContextHolder.getContext()
                 .flatMap(securityContext -> {
                     var auth = securityContext.getAuthentication();
@@ -84,12 +37,17 @@ abstract public class AbstractDataFetcher {
                             !auth.isAuthenticated()) {
                         return Mono.empty();
                     }
-                    return Mono.just((LoggedUser) auth.getPrincipal());
-                });
-    }
 
-    protected Mono<Long> loggedUserId() {
-        return loggedUser()
-                .map(loggedUser -> loggedUser.getId());
+                    var principal = auth.getPrincipal();
+                    if (principal instanceof OAuth2User) {
+                        var oAuth2User = (OAuth2User) auth.getPrincipal();
+                        return Mono.just(Long.parseLong(oAuth2User.getName()));
+                    } else if (principal instanceof Jwt) {
+                        var jwt = (Jwt) auth.getPrincipal();
+                        return Mono.just(Long.parseLong(jwt.getClaimAsString("sub")));
+                    } else {
+                        return Mono.empty();
+                    }
+                });
     }
 }

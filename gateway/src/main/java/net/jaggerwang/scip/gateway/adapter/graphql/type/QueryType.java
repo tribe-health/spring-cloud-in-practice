@@ -11,8 +11,6 @@ import java.util.Map;
 @Component
 public class QueryType implements Type {
     @Autowired
-    QueryAuthLogoutDataFetcher authLogoutDataFetcher;
-    @Autowired
     QueryAuthLoggedDataFetcher authLoggedDataFetcher;
     @Autowired
     QueryUserInfoDataFetcher userInfoDataFetcher;
@@ -44,7 +42,6 @@ public class QueryType implements Type {
     @Override
     public Map<String, DataFetcher> dataFetchers() {
         var m = new HashMap<String, DataFetcher>();
-        m.put("authLogout", authLogoutDataFetcher);
         m.put("authLogged", authLoggedDataFetcher);
         m.put("userInfo", userInfoDataFetcher);
         m.put("userFollowing", userFollowingDataFetcher);
